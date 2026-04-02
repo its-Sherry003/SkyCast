@@ -3,14 +3,22 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import requests
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  #THIS loads the .env file
+
+API_KEY = os.getenv("OPENWEATHER_API_KEY")  #Get the key
 
 app = Flask(__name__)
 
 # Database config from environment variables
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'mysql+pymysql://root:password@localhost/weatherdb')
+#app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'mysql+pymysql://root:password@localhost/weatherdb')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///weather.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
+print("API KEY:", API_KEY)
 
 # ── Model ──────────────────────────────────────────────────────────────────────
 class SearchHistory(db.Model):
@@ -44,6 +52,7 @@ def index():
 # CREATE + READ (search weather and save to DB)
 @app.route('/weather', methods=['POST'])
 def get_weather():
+    
     city = request.json.get('city', '').strip()
     if not city:
         return jsonify({'error': 'City name is required'}), 400
@@ -52,7 +61,9 @@ def get_weather():
     url = f'https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric'
 
     try:
-        res = requests.get(url, timeout=5)
+        print("Sending request to OpenWeather...")
+        res = requests.get(url, timeout=10)
+        print("Response received")
         if res.status_code == 404:
             return jsonify({'error': 'City not found'}), 404
         if res.status_code != 200:
