@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SkyCast — Weather Explorer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0e1a;
+      --surface:  #111827;
+      --card:     #161d2e;
+      --border:   #1e2d45;
+      --accent:   #38bdf8;
+      --accent2:  #818cf8;
+      --danger:   #f87171;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --radius:   14px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background orbs */
+    body::before, body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::before {
+      width: 600px; height: 600px;
+      background: var(--accent);
+      top: -200px; left: -200px;
+    }
+    body::after {
+      width: 500px; height: 500px;
+      background: var(--accent2);
+      bottom: -200px; right: -200px;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+
+    /* Header */
+    header { text-align: center; margin-bottom: 52px; }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 2.6rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .tagline {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-top: 6px;
+      letter-spacing: 0.04em;
+    }
+
+    /* Search */
+    .search-box {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+    .search-box input {
+      flex: 1;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .search-box input:focus { border-color: var(--accent); }
+    .search-box input::placeholder { color: var(--muted); }
+    .btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: var(--radius);
+      padding: 14px 28px;
+      color: #0a0e1a;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      white-space: nowrap;
+    }
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Error */
+    .error-msg {
+      background: rgba(248,113,113,0.1);
+      border: 1px solid var(--danger);
+      color: var(--danger);
+      border-radius: var(--radius);
+      padding: 12px 18px;
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    /* Weather result card */
+    .weather-card {
+      background: var(--card);
+      border: 1.5px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      margin-bottom: 48px;
+      display: none;
+      animation: fadeUp .4s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .weather-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    .city-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .city-country { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+    .temp-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .temp-big {
+      font-family: 'Syne', sans-serif;
+      font-size: 4rem;
+      font-weight: 800;
+      color: var(--accent);
+      line-height: 1;
+    }
+    .temp-desc { color: var(--muted); font-size: 1.05rem; padding-bottom: 8px; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .stat {
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 14px 18px;
+    }
+    .stat-label { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+    .stat-value { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 600; }
+
+    /* History */
+    .section-title {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      margin-bottom: 16px;
+    }
+    .history-list { display: flex; flex-direction: column; gap: 10px; }
+    .history-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: fadeUp .3s ease;
+      transition: border-color .2s;
+    }
+    .history-item:hover { border-color: var(--accent); }
+    .h-left .h-city { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 1rem; }
+    .h-left .h-desc { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+    .h-right { display: flex; align-items: center; gap: 14px; }
+    .h-temp { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+    .h-time { color: var(--muted); font-size: 0.78rem; }
+    .del-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all .2s;
+    }
+    .del-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      padding: 32px;
+      font-size: 0.95rem;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="logo">SkyCast</div>
+    <div class="tagline">Real-time weather · Powered by OpenWeatherMap · Deployed on Railway</div>
+  </header>
+
+  <div class="search-box">
+    <input type="text" id="cityInput" placeholder="Enter city name e.g. Kampala, London..." />
+    <button class="btn" id="searchBtn" onclick="searchWeather()">Search</button>
+  </div>
+
+  <div class="error-msg" id="errorMsg"></div>
+
+  <!-- Weather result -->
+  <div class="weather-card" id="weatherCard">
+    <div class="city-name" id="wCity"></div>
+    <div class="city-country" id="wCountry"></div>
+    <div class="temp-row">
+      <div class="temp-big" id="wTemp"></div>
+      <div class="temp-desc" id="wDesc"></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat">
+        <div class="stat-label">Humidity</div>
+        <div class="stat-value" id="wHumidity"></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Wind Speed</div>
+        <div class="stat-value" id="wWind"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="section-title">Search History</div>
+  <div class="history-list" id="historyList"></div>
+
+</div>
+
+<script>
+  const input = document.getElementById('cityInput');
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') searchWeather(); });
+
+  async function searchWeather() {
+    const city = input.value.trim();
+    if (!city) return;
+    const btn = document.getElementById('searchBtn');
+    btn.disabled = true;
+    btn.textContent = 'Searching...';
+    hideError();
+
+    try {
+      const res = await fetch('/weather', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ city })
+      });
+      const data = await res.json();
+      if (!res.ok) { showError(data.error); return; }
+      displayWeather(data.weather);
+      loadHistory();
+    } catch {
+      showError('Network error. Please try again.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Search';
+    }
+  }
+
+  function displayWeather(w) {
+    document.getElementById('wCity').textContent = w.city;
+    document.getElementById('wCountry').textContent = `${w.country} · ${w.searched_at}`;
+    document.getElementById('wTemp').textContent = `${Math.round(w.temperature)}°C`;
+    document.getElementById('wDesc').textContent = w.description;
+    document.getElementById('wHumidity').textContent = `${w.humidity}%`;
+    document.getElementById('wWind').textContent = `${w.wind_speed} m/s`;
+    document.getElementById('weatherCard').style.display = 'block';
+  }
+
+  async function loadHistory() {
+    const res = await fetch('/history');
+    const records = await res.json();
+    const list = document.getElementById('historyList');
+
+    if (!records.length) {
+      list.innerHTML = '<div class="empty-state">No searches yet. Try a city above!</div>';
+      return;
+    }
+
+    list.innerHTML = records.map(r => `
+      <div class="history-item" id="item-${r.id}">
+        <div class="h-left">
+          <div class="h-city">${r.city}, ${r.country}</div>
+          <div class="h-desc">${r.description} · Humidity ${r.humidity}%</div>
+        </div>
+        <div class="h-right">
+          <div>
+            <div class="h-temp">${Math.round(r.temperature)}°C</div>
+            <div class="h-time">${r.searched_at}</div>
+          </div>
+          <button class="del-btn" onclick="deleteRecord(${r.id})">✕</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function deleteRecord(id) {
+    await fetch(`/history/${id}`, { method: 'DELETE' });
+    document.getElementById(`item-${id}`).remove();
+    const list = document.getElementById('historyList');
+    if (!list.children.length) {
+      list.innerHTML = '<div class="empty-state">No searches yet. Try a city above!</div>';
+    }
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError() { document.getElementById('errorMsg').style.display = 'none'; }
+
+  // Load history on page load
+  loadHistory();
+</script>
+</body>
+</html>
